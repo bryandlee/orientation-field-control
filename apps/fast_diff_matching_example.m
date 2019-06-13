@@ -18,17 +18,34 @@ complexity  = 3;   % num of spline coefs per joints
 basis_order = 4;   % cubic spline
 horizon  = 1;      % trajectory horizon
 
-Y = zeros(dim,N);  % curve data
-X = zeros(dim,N);  % flat data
-t = linspace(0,horizon,N);
-
 qi = rand(dim,1);  % init point
 qf = rand(dim,1);  % final point
 spline_params = rand(complexity,dim);
-p2ptrajectory = makeSplineP2P(qi,qf,spline_params, basis_order, horizon);
 
+% constant speed reparametrization
+ts = linspace(0,horizon,1e3*N);
+[sp, dsp] = makeSplineP2P(qi,qf,spline_params, basis_order, horizon,ts);
+spline_velocity = vecnorm(dsp);
+total_length = sum(spline_velocity);
+
+t = zeros(1,N); t(N) = horizon; j = 1;
+for i = 2:N-1
+    local_length = 0; k = 0;
+    while true
+        local_length = local_length + spline_velocity(j+k);
+        if local_length > total_length/(N-1)
+            t(i) = ts(j+k-1);
+            j = j+k-1;
+            break;
+        else
+            k = k+1;
+        end
+    end
+end
+
+Y = makeSplineP2P(qi,qf,spline_params, basis_order, horizon, t);
+X = zeros(dim,N);  % flat data
 for i = 1:dim
-    Y(i,:) = fnval(p2ptrajectory(i), t);
     X(i,:) = linspace(Y(i,1),Y(i,N),N);
 end
 
@@ -59,10 +76,10 @@ getframe;
 %% inverse map
 disp('verifying inverse map..');
 
-Z_inv = Z;
+inv_y = Z;
 for i = 1:N
     for k=K:-1:1
-        Z_inv(:,i) = locally_weighted_translation_inverse(rho(k),c(:,k),v(:,k),Z_inv(:,i));
+        inv_y(:,i) = locally_weighted_translation_inverse(rho(k),c(:,k),v(:,k),inv_y(:,i));
     end   
 end
 
@@ -72,14 +89,14 @@ figure(2); hold on;
 axis equal; axis([0 1 0 1]);
 plot(X(1,:), X(2,:),'-k','LineWidth',2);
 plot(Y(1,:), Y(2,:),'--r','LineWidth',2);
-plot(Z_inv(1,:), Z_inv(2,:),'--g','LineWidth',2);
+plot(inv_y(1,:), inv_y(2,:),'--g','LineWidth',2);
 
 % for i = 1:2:K
 %     plot(psi_X_k(1,:,i), psi_X_k(2,:,i),'-b','LineWidth',0.1);
 % end
 getframe;
 
-if(sum(vecnorm(X-Z_inv))/N > 0.01)
+if(sum(vecnorm(X-inv_y))/N > 0.01)
     disp('Error: inverse mapping failed');
     return;    
 end
@@ -87,7 +104,7 @@ end
 %% Vector Field
 disp('generating vector field..');
 
-NP = 20;    % num points for vectorfield plot
+NP = 50;    % num points for vectorfield plot
 x1 = linspace(0,1,NP);
 x2 = x1;
 x3 = [0 1];
@@ -106,27 +123,29 @@ figure(3);
 subplot(1,2,1); hold on;
 axis equal; axis([0 1 0 1]);
 plot(X(1,:), X(2,:),'-b','LineWidth',2);
-quiver(x1, x2, x1dot, x2dot,'r');
+% quiver(x1, x2, x1dot, x2dot,'r');
 streamslice(x1,x2,x3,x1dot,x2dot,x3dot,[],[],0);
 
-x1dot_trans = x1dot;
-x2dot_trans = x2dot;
-x3dot_trans = x3dot;
+y1 = x1;
+y2 = x2;
+y3 = x3;
+y1dot = x1dot;
+y2dot = x2dot;
+y3dot = x3dot;
 
 for l=1:NP
     disp(['mapping vector field..', num2str(100*l/NP), '%']);
     for m=1:NP
-        for n=1:2
-            Z_inv = [x1(l,m,n);x2(l,m,n)];
+        for n=1:1
+            inv_y = [y1(l,m,n);y2(l,m,n)];
             for k=K:-1:1
-                Z_inv = locally_weighted_translation_inverse(rho(k),c(:,k),v(:,k),Z_inv);
+                inv_y = locally_weighted_translation_inverse(rho(k),c(:,k),v(:,k),inv_y);
             end
-            J = locally_weighted_translation_derivative(rho,c,v,Z_inv);
-            xdot_trans = J*[x1dot(l,m,n);x2dot(l,m,n)];
-            xdot_trans_norm = norm(xdot_trans);
+            J = locally_weighted_translation_derivative(rho,c,v,inv_y);
+            ydot = J*A*(inv_y - qf);
             
-            x1dot_trans(l,m,n) = xdot_trans(1)/xdot_trans_norm;
-            x2dot_trans(l,m,n) = xdot_trans(2)/xdot_trans_norm;
+            y1dot(l,m,n) = ydot(1);
+            y2dot(l,m,n) = ydot(2);
         end
     end
 end
@@ -134,8 +153,8 @@ end
 subplot(1,2,2); hold on;
 axis equal; axis([0 1 0 1]);
 plot(Z(1,:), Z(2,:),'-b','LineWidth',2);
-quiver(x1, x2, x1dot_trans, x2dot_trans ,'r');
-streamslice(x1,x2,x3,x1dot_trans,x2dot_trans,x3dot,[],[],0);
+% quiver(x1, x2, y1dot, y2dot ,'r');
+streamslice(x1,x2,x3,y1dot,y2dot,x3dot,[],[],0);
 
 
 %%

@@ -43,10 +43,10 @@ function robot = makePlanar3R()
                   0  0  0  1];
     
     % 
-    M_is = eye(4,4);
+    M_si = eye(4,4);
     for i = 1:robot.dof
-        M_is = robot.M(:,:,i)*M_is;
-        robot.A_s(:,i) = large_Ad(M_is)*robot.A(:,i);
+        M_si = M_si*inverse_SE3(robot.M(:,:,i));
+        robot.A_s(:,i) = large_Ad(M_si)*robot.A(:,i);
         robot.A_b(:,i) = large_Ad(inverse_SE3(robot.M_sb))*robot.A_s(:,i);
     end
                         

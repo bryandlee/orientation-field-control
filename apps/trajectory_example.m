@@ -21,20 +21,19 @@ qf = 5*rand(dim,1);  % final point
 spline_params = rand(complexity,dim);
 spline_params_ori = rand(complexity,dim);
 
-
-t = linspace(0,horizon,1e3*N);
-[sp, dsp] = makeSplineP2P(qi,qf,spline_params, basis_order, horizon,t);
+% constant velocity reparameterize
+ts = linspace(0,horizon,1e3*N);
+[sp, dsp] = makeSplineP2P(qi,qf,spline_params, basis_order, horizon,ts);
 spline_velocity = vecnorm(dsp);
 total_length = sum(spline_velocity);
 
-% constant velocity reparameterize
 s = zeros(1,N); s(N) = horizon; j = 1;
 for i = 2:N-1
     local_length = 0; k = 0;
     while true
         local_length = local_length + spline_velocity(j+k);
         if local_length > total_length/(N-1)
-            s(i) = t(j+k-1);
+            s(i) = ts(j+k-1);
             j = j+k-1;
             break;
         else
