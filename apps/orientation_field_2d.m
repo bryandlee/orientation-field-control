@@ -78,9 +78,7 @@ disp('verifying inverse map..');
 
 inv_y = Z;
 for i = 1:N
-    for k=K:-1:1
-        inv_y(:,i) = locally_weighted_translation_inverse(rho(k),c(:,k),v(:,k),inv_y(:,i));
-    end   
+    inv_y(:,i) = locally_weighted_translation_inverse(rho,c,v,inv_y(:,i));
 end
 
 %plot
@@ -137,10 +135,7 @@ for l=1:NP
     disp(['mapping vector field..', num2str(100*l/NP), '%']);
     for m=1:NP
         for n=1:1
-            inv_y = [y1(l,m,n);y2(l,m,n)];
-            for k=K:-1:1
-                inv_y = locally_weighted_translation_inverse(rho(k),c(:,k),v(:,k),inv_y);
-            end
+            inv_y = locally_weighted_translation_inverse(rho,c,v,[y1(l,m,n);y2(l,m,n)]);
             J = locally_weighted_translation_derivative(rho,c,v,inv_y);
             ydot = J*A*(inv_y - qf);
             
