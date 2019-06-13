@@ -1,17 +1,28 @@
-%% Analytic logarithm of SO(3)
-function w = log_SO3(R)
-    if R == eye(3)
-        w = zeros(3,1);
-    else if 
-            
-            
-    wnorm_sq = w(1)^2 + w(2)^2 + w(3)^2;
-    wnorm = wnorm_sq^0.5;
-    cw = cos(wnorm);
-    sw = sin(wnorm);
-    R = [ cw - (w(1)^2*(cw - 1))/wnorm_sq, - (w(3)*sw)/wnorm - (w(1)*w(2)*(cw - 1))/wnorm_sq,   (w(2)*sw)/wnorm - (w(1)*w(3)*(cw - 1))/wnorm_sq;
-        (w(3)*sw)/wnorm - (w(1)*w(2)*(cw - 1))/wnorm_sq,                                                   cw - (w(2)^2*(cw - 1))/wnorm_sq, - (w(1)*sw)/wnorm - (w(2)*w(3)*(cw - 1))/wnorm_sq;
-        - (w(2)*sw)/wnorm - (w(1)*w(3)*(cw - 1))/wnorm_sq,   (w(1)*sw)/wnorm - (w(2)*w(3)*(cw - 1))/wnorm_sq,                                                   cw - (w(3)^2*(cw - 1))/wnorm_sq];
+function omega = log_SO3( R )
+%LOG_SO3 이 함수의 요약 설명 위치
+%   자세한 설명 위치
+s = size(R);
+dim = s(1); 
+R=reshape(R,[dim,dim]);
+if dim == 2
+    a = acos(R(1,1));
+    b = -a;
+    if sin(a)-(R(2,1)) < 1.0e-10
+        theta = a;
+    elseif sin(b)-(R(2,1)) < 1.0e-10
+        theta = b;
+    end
+    omega = [0,-theta;theta,0];
+elseif dim == 3
+    if trace(R)==-1
+        stop
+    elseif trace(R)==3
+        omega = zeros(3);
+    else
+        theta = acos((trace(R)-1)/2);
+        omega = theta/(2*sin(theta)) * (R-R');
+    end
 end
 
+end
 

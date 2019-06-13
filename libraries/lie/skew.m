@@ -1,6 +1,12 @@
 %% return skew-symmetric matrix : r -> [r] or [r] - > r
 function mat = skew(r)
-    if (size(r) == [3,1])
+    if (size(r) == [1,1])
+        mat=zeros(2);
+        mat(1,2)=-r;
+        mat(2,1)=r;
+    elseif (size(r) == [2,2])
+        mat=r(2,1);
+    elseif (size(r) == [3,1])
         mat=zeros(3);
         mat(1,2)=-r(3);
         mat(1,3)=r(2);
