@@ -78,9 +78,7 @@ disp('verifying inverse map..');
 
 inv_y = Z;
 for i = 1:N
-    for k=K:-1:1
-        inv_y(:,i) = locally_weighted_translation_inverse(rho(k),c(:,k),v(:,k),inv_y(:,i));
-    end   
+    inv_y(:,i) = locally_weighted_translation_inverse(rho,c,v,inv_y(:,i));
 end
 
 %plot
@@ -113,7 +111,7 @@ x3 = [0 1];
 
 eigen_direction = (qf-qi)/norm(qf-qi);
 normal_direction = [eigen_direction(2); -eigen_direction(1)];
-A = [eigen_direction normal_direction]' * [-1/5 0; 0 -4/5] * [eigen_direction normal_direction];
+A = [eigen_direction normal_direction]' * [-1 0; 0 -1] * [eigen_direction normal_direction];
 
 x1dot = A(1,1)*(x1 - qf(1)) + A(1,2)*(x2 - qf(2));
 x2dot = A(2,1)*(x1 - qf(1)) + A(2,2)*(x2 - qf(2));
@@ -137,10 +135,8 @@ for l=1:NP
     disp(['mapping vector field..', num2str(100*l/NP), '%']);
     for m=1:NP
         for n=1:1
-            inv_y = [y1(l,m,n);y2(l,m,n)];
-            for k=K:-1:1
-                inv_y = locally_weighted_translation_inverse(rho(k),c(:,k),v(:,k),inv_y);
-            end
+
+            inv_y = locally_weighted_translation_inverse(rho,c,v,[y1(l,m,n);y2(l,m,n)]);
             J = locally_weighted_translation_derivative(rho,c,v,inv_y);
             ydot = J*A*(inv_y - qf);
             

@@ -84,6 +84,7 @@ x1 = min(reshape(T_traj(1,3,:),[N,1]))-0.2;
 y2 = max(reshape(T_traj(2,3,:),[N,1]))+0.2;
 y1 = min(reshape(T_traj(2,3,:),[N,1]))-0.2;
 axis([x1 x2 y1 y2])
+
 %% Connection Learning (W=0.00001)
 n=5;
 if dim ==3
