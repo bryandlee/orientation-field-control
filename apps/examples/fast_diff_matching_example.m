@@ -111,7 +111,7 @@ x3 = [0 1];
 
 eigen_direction = (qf-qi)/norm(qf-qi);
 normal_direction = [eigen_direction(2); -eigen_direction(1)];
-A = [eigen_direction normal_direction]' * [-1 0; 0 -1] * [eigen_direction normal_direction];
+A = [eigen_direction normal_direction]' * [-1 0; 0 -5] * [eigen_direction normal_direction];
 
 x1dot = A(1,1)*(x1 - qf(1)) + A(1,2)*(x2 - qf(2));
 x2dot = A(2,1)*(x1 - qf(1)) + A(2,2)*(x2 - qf(2));
@@ -150,7 +150,7 @@ subplot(1,2,2); hold on;
 axis equal; axis([0 1 0 1]);
 plot(Z(1,:), Z(2,:),'-b','LineWidth',2);
 % quiver(x1, x2, y1dot, y2dot ,'r');
-streamslice(x1,x2,x3,y1dot,y2dot,x3dot,[],[],0);
+streamslice(x1,x2,x3,y1dot,y2dot,y3dot,[],[],0);
 
 
 %%

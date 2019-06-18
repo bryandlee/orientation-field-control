@@ -1,5 +1,8 @@
 %% Analytic exponential of small so(3)
 function R = exp_so3(w)
+    if size(w)==[3,3]
+        w=skew(w);
+    end
     wnorm_sq = w(1)^2 + w(2)^2 + w(3)^2;
     wnorm = wnorm_sq^0.5;
     cw = cos(wnorm);
