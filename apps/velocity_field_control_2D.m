@@ -115,7 +115,7 @@ while t < horizon
 
     
     lambda1 = 1;
-    lambda2 = 1;
+    lambda2 = 3;
     
     e1 = normc(desired_V_b);
     Q = [e1, null(e1(:).')];
@@ -124,8 +124,7 @@ while t < horizon
     D= Q*Lambda*Q';
     
     gravity_compensation = solveInverseDynamics(robot.A,robot.M,q,zeros(dof,1),zeros(dof,1),robot.G,[0;0;0;0;9.8;0]);
-    
-    
+        
     tau = gravity_compensation + J_b'*(-D*V_b + lambda2*desired_V_b);
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -133,10 +132,11 @@ while t < horizon
     
     
     % Runge-Kutta 4th order integration
-    [~, q_and_qdot] = ode45(@(t,q_and_qdot) robot_dynamics(t,q_and_qdot,tau,robot), t:dt/2:t+dt, [q; qdot]);
+%     [~, q_and_qdot] = ode45(@(t,q_and_qdot) robot_dynamics(t,q_and_qdot,tau,robot), t:dt/2:t+dt, [q; qdot]);
+    q_and_qdot = RK4(@(t,q_and_qdot) robot_dynamics(t,q_and_qdot,tau,robot), t, t+dt, dt, [q; qdot]);
     
-    q = q_and_qdot(3,1:end/2)';
-    qdot = q_and_qdot(3,end/2+1:end)';
+    q = q_and_qdot(1:end/2);
+    qdot = q_and_qdot(end/2+1:end);
 
     % plot
     T = zeros(4,4,dof+1);
@@ -189,4 +189,18 @@ function dXdt = robot_dynamics(t,q_and_qdot,tau,robot)
     dXdt = [qdot; solveForwardDynamics(robot.A,robot.M,q,qdot,tau,robot.G,[0;0;0;0;9.8;0])];
 end
 
-% 
+% Runge Kutta Method 4th Order 
+function y= RK4(f,t0,t1,dt,y0)
+    t = t0:dt:t1;
+    y = y0;
+
+    for i=1:(length(t)-1)
+        k1 = f(t(i),          y); 
+        k2 = f(t(i) + 0.5*dt, y + 0.5*dt*k1); 
+        k3 = f(t(i) + 0.5*dt, y + 0.5*dt*k2); 
+        k4 = f(t(i) + dt,     y + k3*dt); 
+
+        y = y + (1/6)*(k1+2*k2+2*k3+k4)*dt;
+    end
+end
+

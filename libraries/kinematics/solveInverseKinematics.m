@@ -15,7 +15,7 @@
 
 %% Implementation
 function q = solveInverseKinematics(A_s, T_s, varargin)
-    EPS = 1e-10;
+    EPS = 1e-8;
     maxtries = 1e4;
     
     n = size(A_s,2); % number of joints
@@ -37,7 +37,7 @@ function q = solveInverseKinematics(A_s, T_s, varargin)
         end
 
         S = log_SE3(T_s * inverse_SE3(T));
-        norm(S)
+%         norm(S)
         if norm(S) < EPS
             break
         end

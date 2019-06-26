@@ -110,8 +110,8 @@ x3 = [0 1];
 
 
 eigen_direction = (qf-qi)/norm(qf-qi);
-normal_direction = [eigen_direction(2); -eigen_direction(1)];
-A = [eigen_direction normal_direction]' * [-1 0; 0 -5] * [eigen_direction normal_direction];
+normal_direction = null(eigen_direction(:).');
+A = [eigen_direction normal_direction] * diag([-1 -5]) * [eigen_direction normal_direction]';
 
 x1dot = A(1,1)*(x1 - qf(1)) + A(1,2)*(x2 - qf(2));
 x2dot = A(2,1)*(x1 - qf(1)) + A(2,2)*(x2 - qf(2));
