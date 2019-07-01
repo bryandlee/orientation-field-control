@@ -10,8 +10,22 @@ K = 150;    % num of transformations
 mu = 0.9;   % safety margin
 beta = 0.5; % deformation rate
 
+%% Data Generation
+robot = makeFrankaPanda;
+qi = getFeasiblePose(robot);
+qf = getFeasiblePose(robot);
+
+for i = 1:robot.dof
+    q(i,:) = linspace(qi(i), qf(i), 100);
+end
+for i = 1:100
+    T_d(:,:,i) = solveForwardKinematics(q(:,i),robot.A, robot.M);
+end
+
+visualizePanda(q);
+
 %% Data Load
-load('../data/3.mat');
+% load('../data/3.mat');
 Y = reshape(T_d(1:3,4,:),[dim N]);
 X = zeros(dim,N);  % flat data
 for i = 1:dim
@@ -25,7 +39,7 @@ plot_min = min(Y,[],2) - 0.2;
 plot_max = max(Y,[],2) + 0.2;
 
 % plot
-figure(1);
+figure(2);
 subplot(1,2,1); hold on;
 axis equal; axis([plot_min(1) plot_max(1) plot_min(2) plot_max(2) plot_min(3) plot_max(3)]);
 view([135 35]); xlabel('x'); ylabel('y'); zlabel('z');
@@ -61,7 +75,7 @@ end
 
 %plot
 [psi_X, psi_X_k] = locally_weighted_translation(rho,c,v,X);
-figure(2); hold on;
+figure(3); hold on;
 axis equal; axis([plot_min(1) plot_max(1) plot_min(2) plot_max(2) plot_min(3) plot_max(3)]);
 view([135 35]); xlabel('x'); ylabel('y'); zlabel('z');
 
@@ -96,7 +110,7 @@ x1dot = A(1,1)*(x1 - qf(1)) + A(1,2)*(x2 - qf(2)) + A(1,3)*(x3 - qf(3));
 x2dot = A(2,1)*(x1 - qf(1)) + A(2,2)*(x2 - qf(2)) + A(2,3)*(x3 - qf(3));
 x3dot = A(3,1)*(x1 - qf(1)) + A(3,2)*(x2 - qf(2)) + A(3,3)*(x3 - qf(3));
 
-figure(3);
+figure(4);
 subplot(1,2,1); hold on;
 axis equal; axis([plot_min(1) plot_max(1) plot_min(2) plot_max(2) plot_min(3) plot_max(3)]);
 view([135 35]); xlabel('x'); ylabel('y'); zlabel('z');
@@ -138,6 +152,15 @@ view([135 35]); xlabel('x'); ylabel('y'); zlabel('z');
 
 streamline(x1,x2,x3,y1dot,y2dot,y3dot,startpoints(1,:),startpoints(2,:),startpoints(3,:));
 
+%%
+task.Xd = Y;
+task.rho = rho;
+task.c = c;
+task.v = v;
+task.A = A;
+task.qi = qi;
+task.qf = qf;
+task.T_d = T_d;
 
 %%
 disp('done');

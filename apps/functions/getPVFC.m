@@ -148,9 +148,8 @@ function tau = getPVFC(A,M,q,qdot,v,vdot,G,Vdot_0,E,M_f,gamma)
     P = M_bar * v_bar;
     w = M_bar * vdot_bar + c_bar * v_bar;
     
-    tau_c = (w*P' - P*w')*qdot/(2*E);
-    tau_f = (P*p' - p*P')*qdot*gamma;
-
-    
+    tau_c = (w*P' - P*w')*qdot_bar/(2*E);
+    tau_f = (P*p' - p*P')*qdot_bar*gamma;
+   
     tau = tau_c + tau_f + g_bar;
 end

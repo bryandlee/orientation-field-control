@@ -35,7 +35,7 @@ function handle = visualizePandaRealtime(robot, q, varargin)
         % The model is rendered with a PATCH graphics object. We also add some dynamic
         % lighting, and adjust the material properties to change the specular
         % highlighting.
-        handle.fig = figure('Name','Franka Emika Panda','NumberTitle','off','units','pixels','pos',[100 100 800 800]);
+        handle.fig = figure('Name','Franka Emika Panda','NumberTitle','off','units','pixels','pos',[-800 100 800 800]);
         hold on;
         axis equal;
         axis([-1 1 -1 1 -0.5 1.3]);
@@ -92,7 +92,7 @@ function handle = visualizePandaRealtime(robot, q, varargin)
 
         end_effector_T = T(:,:,7) * robot.M_ee;
         plot_SE3(end_effector_T, handle.end_effector);
-        plot3(end_effector_T(1,4),end_effector_T(2,4),end_effector_T(3,4),'.','Color','r');
+        plot3(end_effector_T(1,4),end_effector_T(2,4),end_effector_T(3,4),'.','Color','r', 'MarkerSize', 0.5);
         
         getframe;
     end
