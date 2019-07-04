@@ -14,7 +14,7 @@
 % [Name]       [Description]                      [Size]
 
 %% Implementation
-function tau = getPVFC(A,M,q,qdot,v,vdot,G,Vdot_0,E,M_f,gamma)
+function tau = getPVFC(A,M,q,qdot,v,vdot,G,Vdot_0,E,M_f,gamma,qdot_flywheel)
     %% Initialization
     n     = size(q,1);          % number of joints
     
@@ -82,7 +82,7 @@ function tau = getPVFC(A,M,q,qdot,v,vdot,G,Vdot_0,E,M_f,gamma)
     %% Control law
     qdot_bar = zeros(n+1,1);
     qdot_bar(1:n) = qdot;
-    qdot_bar(n+1) = sqrt(2*(E - (1/2)*qdot'*M_q*qdot)/M_f);
+    qdot_bar(n+1) = qdot_flywheel;
     
     v_bar = zeros(n+1,1);
     v_bar(1:n) = v;

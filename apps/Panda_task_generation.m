@@ -12,17 +12,25 @@ beta = 0.5; % deformation rate
 
 %% Data Generation
 robot = makeFrankaPanda;
+joint_safety = 0.8;
+robot.q_c = (robot.q_min + robot.q_max)/2;
+robot.q_d = (robot.q_max - robot.q_min)/2;
+robot.q_min = robot.q_c - robot.q_d * joint_safety;
+robot.q_max = robot.q_c + robot.q_d * joint_safety;
+
 qi = getFeasiblePose(robot);
 qf = getFeasiblePose(robot);
 
 for i = 1:robot.dof
     q(i,:) = linspace(qi(i), qf(i), 100);
 end
+task.q_d = q;
 for i = 1:100
-    T_d(:,:,i) = solveForwardKinematics(q(:,i),robot.A, robot.M);
+    T_d(:,:,i) = solveForwardKinematics(q(:,i),robot.A, robot.M)*robot.M_ee;
 end
 
 visualizePanda(q);
+
 
 %% Data Load
 % load('../data/3.mat');
@@ -152,6 +160,38 @@ view([135 35]); xlabel('x'); ylabel('y'); zlabel('z');
 
 streamline(x1,x2,x3,y1dot,y2dot,y3dot,startpoints(1,:),startpoints(2,:),startpoints(3,:));
 
+%% Connection Learning
+visualizer = visualizePandaRealtime(robot,q(:,1));
+visualizer.fig;
+
+dim = 3;
+poly_order = 5;
+index = Indenx3DGen(poly_order);
+ss = size(index);
+N = ss(1);
+W = 1.0e-1*eye(N);
+
+
+T_zero = T_d(:,:,1);
+R_zero = T_zero(1:3,1:3);
+for i = 1:100
+T_traj(:,:,i)=inv(T_zero)*T_d(:,:,i);
+plot_SE3(T_d(:,:,i));
+end
+[C,D,Theta] = Cal_3DABTheta(T_traj,W,index);
+
+R_g = zeros(dim,dim,100);
+
+for i=1:100
+    R_g(:,:,i) = OrientationFieldGen3D(reshape(T_traj(1:dim,dim+1,i),[dim,1]),Theta,index);
+end
+error = 0;
+for i=1:100
+    R_true = reshape(T_traj(1:dim,1:dim,i),[dim,dim]);
+    error = error + norm(log_SO3(reshape(R_g(:,:,i),[dim,dim])' * R_true));
+end
+disp (error/100);
+
 %%
 task.Xd = Y;
 task.rho = rho;
@@ -161,6 +201,12 @@ task.A = A;
 task.qi = qi;
 task.qf = qf;
 task.T_d = T_d;
+task.index = index;
+task.Theta = Theta;
+task.poly_order = poly_order;
+task.W = W;
+task.T_zero = T_zero;
 
+save('../data/task10.mat', 'task');
 %%
 disp('done');

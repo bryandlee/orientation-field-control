@@ -3,39 +3,57 @@ clear
 clc
 
 %% Settings
-t = 0;
-dt = 1e-2;
-horizon = 10;
-export_video = true;
-gravity = [0;0;0;0;0;9.81];
+% control parameters
+E     = 50;    % energy tank capacity
+M_f   = 5;     % flywheel mass
+gamma = 1;     % tracking gain
+beta  = 1;     % desired velocity ratio
+w_n   = 10;    %  
+delta = 1;     % 
+eta   = 0.1;   % 
 
-% controller   
-E = 50;
-M_f = 100;
-gamma = 0.5;
-w_n = 5;
-delta = 1;
-eta = 1;
+% simulation
+t = 0;                      % initial time
+control_rate = 100;        % control frequency
+dt = 1/control_rate;        % controller update interval
+horizon = 5;               % total simulation horizon
+gravity = [0;0;0;0;0;9.81]; % gravity used for controller
 
 % perturbation
-F1 = rand(6,1)*10;
-F2 = rand(6,1);
+perturb = false;
+F1 = [10;0;0;0;0;0];
+F1 = 15 * F1/norm(F1);
+F2 = [0;0;0;0;10;0];
+F2 = 200 * F2/norm(F2);
+
+% 
+export_video = false;
+
 
 %% Velocity Field
-load('../data/task3.mat');
+load('../data/task10.mat');
 
 %% Init robot
 robot = makeFrankaPanda();
-
 dof = robot.dof;
-qi = getFeasiblePose(robot);
+
+% qi = getFeasiblePose(robot);
+% qinit = task.q_d(:,1);
+% qi = qinit + 0.1*(qi-qinit);
+qi = task.q_d(:,1);
+
+% robot constraints
+q_upper = robot.q_max;
+q_lower = robot.q_min;
+
+q_dot_limit = abs(robot.qdot_max);
+
 tau_min = robot.tau_min;
 tau_max = robot.tau_max;
 dtau_max = robot.dtau_max;
 
-%% 
 
-% %% Desried Path Plot
+%% Desired Path Plot
 % visualizer2 = visualizePandaRealtime(robot,qi);
 % 
 % visualizer2.fig;
@@ -43,7 +61,7 @@ dtau_max = robot.dtau_max;
 % for i = 1:100
 %     plot_SE3(task.T_d(:,:,i));
 % end
-% 
+
 % %% Integral Curve
 % visualizer3 = visualizePandaRealtime(robot,qi);
 % 
@@ -91,17 +109,19 @@ dtau_max = robot.dtau_max;
 %     plot_SE3(T_e(:,:,i));
 %     getframe;
 %     i
+% 
 % end
 % 
 
-%% 
+%% Visualizer Init
 visualizer = visualizePandaRealtime(robot,qi);
 
 visualizer.fig;
 plot3(task.qf(1),task.qf(2),task.qf(3),'*b');
-for i = 1:size(task.T_d,3)
-    plot_SE3(task.T_d(:,:,i));
-end
+plot3(task.Xd(1,:),task.Xd(2,:),task.Xd(3,:),'Color', [0.5 0.5 0.5]);
+% for i = 1:size(task.T_d,3)
+%     plot_SE3(task.T_d(:,:,i));
+% end
 attractor = text(task.qf(1)+0.05,task.qf(2)+0.05,task.qf(3)+0.05,' ');
 
 V_sb_desired = zeros(6,1);
@@ -114,35 +134,63 @@ V_plot = plot3([T(1,4) T(1,4)+V_sb(4)], [T(2,4) T(2,4)+V_sb(5)], [T(3,4) T(3,4)+
 V_des_plot = plot3([T(1,4) T(1,4)+V_sb_desired(4)], [T(2,4) T(2,4)+V_sb_desired(5)], [T(3,4) T(3,4)+V_sb_desired(6)], 'g', 'LineWidth', 1);
 F_perturb_plot = plot3([T(1,4) T(1,4)+F_perturb(4)], [T(2,4) T(2,4)+F_perturb(5)], [T(3,4) T(3,4)+F_perturb(6)], 'b', 'LineWidth', 2);
 
+frame = getframe(gcf);
+
 
 %% Video export
 if export_video
-    writerObj = VideoWriter('../data/example_panda','MPEG-4'); % 
+    writerObj = VideoWriter('../data/example_panda3','MPEG-4'); % 
     writerObj.FrameRate = 15;
 
     % open the video writer
     open(writerObj);
 end
 
-%% Simulation
+%% Simulation Init
 q = qi;
 qdot = zeros(dof,1);
+v_q = zeros(dof,1);
 tau = zeros(dof,1);
 tau_prev = tau;
 timer = text(1,1,1,num2str(t));
+qdot_flywheel = sqrt(2*beta*beta*E/M_f);
+steps = 0;
 
+%% Simulation Loop
 while t < horizon
        
     % Runge-Kutta 4th order integration
-%     [~, q_and_qdot] = ode45(@(t,q_and_qdot) robot_dynamics(t,q_and_qdot,tau,robot), t:dt/2:t+dt, [q; qdot]);
-    q_and_qdot = RK4(@(t,q_and_qdot) robot_dynamics(t,q_and_qdot,tau,robot), t, t+dt, dt/100, [q; qdot]);
+    q_and_qdot = RK4(@(t,q_and_qdot) robot_dynamics(t,q_and_qdot,tau,robot,gravity), t, t+dt, dt/100, [q; qdot]);
     
     q = q_and_qdot(1:end/2);
     qdot = q_and_qdot(end/2+1:end);
-
+   
     t = t + dt;
+    steps = steps + 1;
+       
+    % plot
+    set(timer, 'String', num2str(t));
+    set(V_plot, 'Xdata', [T(1,4) T(1,4)+V_sb(4)], 'Ydata', [T(2,4) T(2,4)+V_sb(5)], 'Zdata', [T(3,4) T(3,4)+V_sb(6)]);
+    set(V_des_plot, 'Xdata', [T(1,4) T(1,4)+V_sb_desired(4)], 'Ydata', [T(2,4) T(2,4)+V_sb_desired(5)], 'Zdata', [T(3,4) T(3,4)+V_sb_desired(6)]);
+    set(F_perturb_plot, 'Xdata', [T(1,4) T(1,4)+F_perturb(4)*0.1], 'Ydata', [T(2,4) T(2,4)+F_perturb(5)*0.1], 'Zdata', [T(3,4) T(3,4)+F_perturb(6)*0.1]);
 
+    visualizePandaRealtime(robot,q,visualizer);
+
+    frame = getframe(gcf);
+
+    if export_video
+        writeVideo(writerObj, frame);
+    end
+    
     %%%%%%%%%%% Control %%%%%%%%%%%%
+
+    % status check
+    error(steps) = 1-(qdot/norm(qdot))'*(v_q/norm(v_q));
+    M_q = getMassMatrix(robot.A, robot.M, q, robot.G);
+    kinetic_energy(steps) = qdot'*M_q*qdot/2;
+    kinetic_energy_w_flywheel(steps) = kinetic_energy(steps) + qdot_flywheel*M_f*qdot_flywheel/2;
+
+    %
     T = solveForwardKinematics(q, robot.A, robot.M) * robot.M_ee;
     
     J_b = getJacobianBody(q, robot.A_b);
@@ -189,18 +237,41 @@ while t < horizon
     % Jacobian inverse
     JJT_inv = pinv(J_a*J_a');
     J_inv = J_a'*JJT_inv;
-    
     dJ_a_inv = - J_a' * JJT_inv*(dJ_a*J_a' + J_a*dJ_a')*JJT_inv + dJ_a'*JJT_inv;
     
     % v and vdot
     v_q = J_inv*V_sb_desired;
     vdot_q = dJ_a_inv* V_sb_desired + J_inv * Vdot_sb_desired;
 
+    % v and v_dot tuning: q limit
+    k = 50;
+    v_I = 10;
+    
+    V_I = v_I*(exp(-k*(q-q_lower))-exp(-k*(q_upper-q)));
+    V_I_dot = -k*v_I*(exp(-k*(q-q_lower))+exp(-k*(q_upper-q))).*qdot;
+    v_q = v_q + V_I;
+    vdot_q = vdot_q + V_I_dot;
+    V_I_norm_save(steps) = norm(V_I);
 
-    tau = getPVFC(robot.A,robot.M,q,qdot,v_q,vdot_q,robot.G,gravity,E,M_f,gamma);
+    if (max(q_upper-q) < 0) || (max(q-q_lower) < 0)
+        disp(' ************* joint limit *************');
+        break;
+    end
+
+    % v and v_dot tuning: qdot limit
+    margin_q_dot = abs(v_q)./(0.9*q_dot_limit);
+    if max(margin_q_dot) > 1
+        beta = max(margin_q_dot);
+        v_q = v_q/beta;
+        vdot_q = v_q/beta;
+    end
+    
+    % PVFC control input
+    tau = getPVFC(robot.A,robot.M,q,qdot,v_q,vdot_q,robot.G,gravity,E,M_f,gamma,qdot_flywheel);
+    qdot_flywheel = qdot_flywheel + dt * tau(end)/M_f;
     tau = tau(1:dof);
     
-    % joint input torque constraint
+    % joint torque constraint
     tau_max_cutoff = max(tau_max, tau_prev + dtau_max*dt);
     tau_max_indicies = tau > tau_max_cutoff;
     tau(tau_max_indicies) = tau_max_cutoff(tau_max_indicies);
@@ -214,74 +285,30 @@ while t < horizon
     end
     
     % perturbation
-    if (1.0 < t) && (t < 1.1)
-        F_perturb = F1;
-    elseif (3.0 < t) && (t < 3.1)
-        F_perturb = F2;
-    else
-        F_perturb = zeros(6,1);
-    end
-    
-    tau = tau + J_b'*Ad_analytic'*F_perturb;
+    if perturb
+        if (1 < t) && (t < 1.35)
+            F_perturb = F1;
+        elseif (3.5 < t) && (t < 3.75)
+            F_perturb = F2;
+        else
+            F_perturb = zeros(6,1);
+        end
+        tau_perturb = J_b'*Ad_analytic'*F_perturb;
 
-    
-    % check status
-    M_q = getMassMatrix(robot.A, robot.M, q, robot.G);
-    kinetic_energy = qdot'*M_q*qdot/2
-    kinetic_energy_desired = v_q'*M_q*v_q/2
-    norm(v_q)
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    % plot
-    set(timer, 'String', num2str(t));
-    set(V_plot, 'Xdata', [T(1,4) T(1,4)+V_sb(4)], 'Ydata', [T(2,4) T(2,4)+V_sb(5)], 'Zdata', [T(3,4) T(3,4)+V_sb(6)]);
-    set(V_des_plot, 'Xdata', [T(1,4) T(1,4)+V_sb_desired(4)], 'Ydata', [T(2,4) T(2,4)+V_sb_desired(5)], 'Zdata', [T(3,4) T(3,4)+V_sb_desired(6)]);
-    set(F_perturb_plot, 'Xdata', [T(1,4) T(1,4)+F_perturb(4)*0.1], 'Ydata', [T(2,4) T(2,4)+F_perturb(5)*0.1], 'Zdata', [T(3,4) T(3,4)+F_perturb(6)*0.1]);
-%     plot_SE3(T);
+        norm_tau_perturb = norm(tau_perturb);
+        q_inward_direc = ((q_lower+q_upper)/2 - q)/norm((q_lower+q_upper)/2 - q);
 
-    visualizePandaRealtime(robot,q,visualizer);
-
-    frame = getframe(gcf);
+        %tau = tau + norm_tau_perturb*(q_inward_direc*q_inward_direc'*tau_perturb)/norm(q_inward_direc*q_inward_direc'*tau_perturb);
+        tau = tau + tau_perturb;
         
-    if export_video
-        writeVideo(writerObj, frame);
+        norm_tau_save(steps) = norm(tau_perturb);
     end
+        
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
 end
 
 if export_video
     % close the writer object
     close(writerObj);
 end
-
-%% Functions
-
-% ROBOT DYNAMICS - state equation
-% q_and_qdot = [q; qdot] in R^2n, tau in R^n
-function dXdt = robot_dynamics(t,q_and_qdot,tau,robot)
-    q = q_and_qdot(1:end/2);
-    qdot = q_and_qdot(end/2+1:end);
-    
-    c1 = 0.2; c2 = 0.2;
-    friction = -c1*qdot - c2*sign(qdot);
-    
-    tau = tau + friction;
-    
-    dXdt = [qdot; solveForwardDynamics(robot.A,robot.M,q,qdot,tau,robot.G,[0;0;0;0;0;9.81])];
-end
-
-% Runge Kutta Method 4th Order 
-function y= RK4(f,t0,t1,dt,y0)
-    t = t0:dt:t1;
-    y = y0;
-
-    for i=1:(length(t)-1)
-        k1 = f(t(i),          y); 
-        k2 = f(t(i) + 0.5*dt, y + 0.5*dt*k1); 
-        k3 = f(t(i) + 0.5*dt, y + 0.5*dt*k2); 
-        k4 = f(t(i) + dt,     y + k3*dt); 
-
-        y = y + (1/6)*(k1+2*k2+2*k3+k4)*dt;
-    end
-end
-

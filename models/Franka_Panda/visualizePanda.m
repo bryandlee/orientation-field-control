@@ -19,7 +19,7 @@ function visualizePanda(varargin)
         T(:,:,i) = solveForwardKinematics(q(1:i), robot.A(:,1:i), robot.M(:,:,1:i));
     end
 
-    trajectory = rand(7,1);
+    trajectory = zeros(7,1);
     if nargin > 0
         if size(varargin{1},1) == n
             trajectory = varargin{1};
