@@ -1,3 +1,3 @@
 # Orientation Field Control
 
-Matlab implementation of [Passive Velocity Field Control](https://ieeexplore.ieee.org/document/782030) and the custom extented version for smooth orientation field control.
+Matlab implementation of the [passive velocity field control](https://ieeexplore.ieee.org/document/782030) and a custom-build extension for smooth orientation field control.
